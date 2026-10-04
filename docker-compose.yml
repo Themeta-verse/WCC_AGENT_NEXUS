@@ -1,0 +1,65 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["serve", "--host", "0.0.0.0", "--port", "8787"]
+    env_file: .env.production
+    environment:
+      NEXUS_DATA_ROOT: /var/lib/nexus
+      NEXUS_STATE_ROOT: /var/lib/nexus/state
+      NEXUS_ALLOWED_FILESYSTEM_ROOT: /workspace
+      NEXUS_API_HOST: 0.0.0.0
+      NEXUS_API_PORT: 8787
+    ports:
+      - "8787:8787"
+    volumes:
+      - nexus_data:/var/lib/nexus
+      - ./:/workspace:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["worker", "--worker-id", "docker-worker-primary"]
+    env_file: .env.production
+    environment:
+      NEXUS_DATA_ROOT: /var/lib/nexus
+      NEXUS_STATE_ROOT: /var/lib/nexus/state
+      NEXUS_ALLOWED_FILESYSTEM_ROOT: /workspace
+    volumes:
+      - nexus_data:/var/lib/nexus
+      - ./:/workspace:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_NEXUS_API_BASE_URL: ${VITE_NEXUS_API_BASE_URL:-http://localhost:8787}
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  nexus_data:
+    name: nexus_data

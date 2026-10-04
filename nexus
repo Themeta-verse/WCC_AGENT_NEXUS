@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import argparse,json,sys,re
+sys.path.insert(0,str(Path(__file__).resolve().parent/'runtime'))
+from local_control import command_center,doctor,capability_ceiling,memory,loops,verify,audit,recover,self_test,living,current_context,mission_view,mission_action,mission_replay,mission_evidence,mission_verify,mission_reality
+from mission_composer import MissionComposer
+from cognitive_os import cognitive_state,world_model,work_graph,evidence_graph,reality_graph,temporal_graph,causal_graph,decision_search,priority,mission_health,project_health,radar,opportunities,counterfactual,fork,briefing,query as cognitive_query,self_audit,mission_template,outcome,trajectory_view,bottleneck_view,opportunity_view,attention_view,approval_center,next_action_view
+from outcome_intelligence import continuation_intent
+from capability_registry import discover_actual_registry
+from canonical_core import governance_for
+
+KNOWN_COMMANDS={'mission','continue','living','run','research-mission','status','missions','capabilities','memory','loops','context','audit','recover','self-test','doctor','cognitive-state','world-model','work-graph','evidence-graph','reality-graph','temporal-graph','causal-graph','briefing','health','project-health','radar','opportunities','outcome','trajectory','bottleneck','attention','approvals','project','self-audit','changes','next','why','query','decision-search','counterfactual','fork','template','pause','resume','stop','cancel','replay','evidence','verify','reality'}
+
+def _default_store_root():
+    p=Path(__file__).resolve().parent/'artifacts'/'nexus-living-os-store-path.txt'
+    try:
+        candidate=p.read_text().strip()
+        return candidate if candidate else None
+    except Exception:
+        return None
+
+def _direct_query_intent(text):
+    q=text.lower().strip()
+    query_starts=('what should','what matters','what changed','what is blocking',"what's blocking",'requires approval','what can you','what do you know',"what don't you know",'why did','status','next action','attention','stale evidence','what is the health',"what's the health",'what is happening','what did you learn','why are you doing this','what should happen next')
+    return q.startswith(query_starts) or q in {'next','what next','why','status','attention','approvals'}
+
+def _natural_language_front_door(argv):
+    if not argv or argv[0] in KNOWN_COMMANDS or argv[0].startswith('-'):
+        return None
+    fp=argparse.ArgumentParser(prog='nexus')
+    fp.add_argument('question',nargs='+')
+    fp.add_argument('--scope',default='Themeta-verse/Nexus')
+    fp.add_argument('--mode',choices=['REAL_READ','SIMULATION','DRY_RUN'],default='REAL_READ')
+    fp.add_argument('--browser-url',default='https://github.com/Themeta-verse/Nexus')
+    fp.add_argument('--filesystem-path',default='/home/ubuntu/nexus/NEXUS-PERSONAL-OS-PHASE2-REPORT.md')
+    fp.add_argument('--repository-scope',default='Themeta-verse/Nexus')
+    fp.add_argument('--store-root',default=None)
+    s=fp.parse_args(argv); text=' '.join(s.question); store_root=s.store_root or _default_store_root()
+    urls=re.findall(r'https?://[^\s]+',text)
+    browser_url=urls[0].rstrip('.,);]') if urls else s.browser_url
+    governance=governance_for(text)
+    if governance.get('state')=='BLOCK':
+        return {'front_door':'GOVERNANCE_BLOCK','intent':text,'governance':governance,'execution_allowed':False,'writes_performed':False,'reason':'consequential or destructive intent is unavailable without explicit operation-specific authorization'}
+    if text.strip().lower().startswith('continue'):
+        recovered=recover(s.scope,store_root); current=outcome(s.scope,store_root); return {'front_door':'CONTINUE','continuation':continuation_intent('continue'),'recovery':recovered,'outcome':current,'next_action':current.get('project_state',{}).get('next_move',{})}
+    if _direct_query_intent(text):
+        return {'front_door':'COGNITIVE_QUERY','query':text,'result':cognitive_query(text,s.scope,store_root)}
+    composer=MissionComposer(); package=composer.compose_capability_mission(text,s.scope,s.mode,browser_url,s.filesystem_path,capabilities=None,store_root=store_root,repository_scope=s.repository_scope); result=composer.execute_capability_mission(package,store_root,s.mode); result['front_door']='SAFE_MISSION_EXECUTION'; result['intent']=text; result['browser_url_selected']=browser_url; return result
+
+def main():
+    direct=_natural_language_front_door(sys.argv[1:])
+    if direct is not None:
+        print(json.dumps(direct,indent=2,default=str)); return
+    p=argparse.ArgumentParser(prog='nexus'); sub=p.add_subparsers(dest='command',required=True)
+    m=sub.add_parser('mission'); m.add_argument('intent'); m.add_argument('--scope',default='Themeta-verse/Nexus'); m.add_argument('--mode',choices=['REAL_READ','SIMULATION','DRY_RUN'],default='REAL_READ'); m.add_argument('--store-root',default=None); m.add_argument('--view',action='store_true')
+    c=sub.add_parser('continue'); c.add_argument('scope',default='Themeta-verse/Nexus',nargs='?'); c.add_argument('--store-root',default=None)
+    l=sub.add_parser('living'); l.add_argument('intent'); l.add_argument('--scope',default='Themeta-verse/Nexus'); l.add_argument('--mode',choices=['REAL_READ','SIMULATION','DRY_RUN'],default='SIMULATION'); l.add_argument('--store-root',default=None)
+    r=sub.add_parser('run'); r.add_argument('intent'); r.add_argument('--scope',default='Themeta-verse/Nexus'); r.add_argument('--mode',choices=['REAL_READ','SIMULATION','DRY_RUN'],default='REAL_READ'); r.add_argument('--store-root',default=None)
+    g=sub.add_parser('research-mission'); g.add_argument('intent'); g.add_argument('--scope',default='Themeta-verse/Nexus'); g.add_argument('--mode',choices=['REAL_READ','SIMULATION','DRY_RUN'],default='REAL_READ'); g.add_argument('--browser-url',default='https://github.com/Themeta-verse/Nexus'); g.add_argument('--filesystem-path',default='/home/ubuntu/nexus/projects/nexus-v3/github-link.json'); g.add_argument('--repository-scope',default='Themeta-verse/Nexus'); g.add_argument('--capabilities',nargs='+',choices=['repository.read','repository.metadata.read','browser.read','filesystem.read'],default=None); g.add_argument('--store-root',default=None)
+    for name in ('status','missions','capabilities','memory','loops','context','audit','recover','self-test','doctor','cognitive-state','world-model','work-graph','evidence-graph','reality-graph','temporal-graph','causal-graph','briefing','health','project-health','radar','opportunities','outcome','trajectory','bottleneck','attention','approvals','project','self-audit','changes','next','why'):
+        q=sub.add_parser(name); q.add_argument('--scope',default='Themeta-verse/Nexus'); q.add_argument('--store-root',default=None)
+    q=sub.add_parser('query'); q.add_argument('question'); q.add_argument('--scope',default='Themeta-verse/Nexus'); q.add_argument('--store-root',default=None)
+    q=sub.add_parser('decision-search'); q.add_argument('question'); q.add_argument('--scope',default='Themeta-verse/Nexus'); q.add_argument('--store-root',default=None)
+    q=sub.add_parser('counterfactual'); q.add_argument('question'); q.add_argument('--scope',default='Themeta-verse/Nexus'); q.add_argument('--store-root',default=None)
+    q=sub.add_parser('fork'); q.add_argument('option'); q.add_argument('--scope',default='Themeta-verse/Nexus'); q.add_argument('--store-root',default=None)
+    q=sub.add_parser('template'); q.add_argument('kind'); q.add_argument('intent'); q.add_argument('--scope',default='Themeta-verse/Nexus')
+    for name in ('pause','resume','stop','cancel','replay','evidence','verify','reality'):
+        q=sub.add_parser(name); q.add_argument('mission_id',nargs='?'); q.add_argument('--scope',default='Themeta-verse/Nexus'); q.add_argument('--store-root',default=None)
+    s=p.parse_args(); out=None
+    if s.command=='mission':
+        if s.view or (s.intent.startswith('mission-') and s.store_root): out=mission_view(s.intent,s.scope,s.store_root)
+        else:
+            composer=MissionComposer(); out=composer.execute(composer.compose(s.intent,s.scope,s.mode,store_root=s.store_root),s.store_root,s.mode)
+    elif s.command in {'living','run'}: out=living(s.intent,s.scope,s.mode,s.store_root)
+    elif s.command=='research-mission':
+        composer=MissionComposer(); package=composer.compose_capability_mission(s.intent,s.scope,s.mode,s.browser_url,s.filesystem_path,capabilities=s.capabilities,store_root=s.store_root,repository_scope=s.repository_scope); out=composer.execute_capability_mission(package,s.store_root,s.mode)
+    elif s.command=='continue':
+        recovered=recover(s.scope,s.store_root); current=outcome(s.scope,s.store_root); out={'front_door':'CONTINUE','continuation':continuation_intent('continue'),'recovery':recovered,'outcome':current,'next_action':current.get('project_state',{}).get('next_move',{})}
+    elif s.command in {'status','missions'}: out=command_center(s.scope,s.store_root)
+    elif s.command=='capabilities': out={'capability_ceiling':capability_ceiling(),'operation_graph':discover_actual_registry().graph()}
+    elif s.command=='cognitive-state': out=cognitive_state(s.scope,s.store_root)
+    elif s.command=='world-model': out=world_model(s.scope,s.store_root)
+    elif s.command=='work-graph': out=work_graph(s.scope,s.store_root)
+    elif s.command=='evidence-graph': out=evidence_graph(s.scope,s.store_root)
+    elif s.command=='reality-graph': out=reality_graph(s.scope,s.store_root)
+    elif s.command in {'temporal-graph','changes'}: out=temporal_graph(s.scope,s.store_root)
+    elif s.command=='causal-graph': out=causal_graph(s.scope,s.store_root)
+    elif s.command=='briefing': out=briefing(s.scope,s.store_root)
+    elif s.command=='next': out=next_action_view(s.scope,s.store_root)
+    elif s.command=='why': out=cognitive_query('Why are we doing this?',s.scope,s.store_root)
+    elif s.command=='health': out=mission_health(s.scope,s.store_root)
+    elif s.command=='project-health': out=project_health(s.scope,s.store_root)
+    elif s.command=='radar': out=radar(s.scope,s.store_root)
+    elif s.command=='opportunities': out=opportunity_view(s.scope,s.store_root)
+    elif s.command=='attention': out=attention_view(s.scope,s.store_root)
+    elif s.command=='approvals': out=approval_center(s.scope,s.store_root)
+    elif s.command=='project': out=cognitive_state(s.scope,s.store_root)
+    elif s.command=='outcome': out=outcome(s.scope,s.store_root)
+    elif s.command=='trajectory': out=trajectory_view(s.scope,s.store_root)
+    elif s.command=='bottleneck': out=bottleneck_view(s.scope,s.store_root)
+    elif s.command=='self-audit': out=self_audit(s.scope)
+    elif s.command=='query': out=cognitive_query(s.question,s.scope,s.store_root)
+    elif s.command=='decision-search': out=decision_search(s.question,s.scope,s.store_root)
+    elif s.command=='counterfactual': out=counterfactual(s.question,s.scope,s.store_root)
+    elif s.command=='fork': out=fork(s.option,s.scope,s.store_root)
+    elif s.command=='template': out=mission_template(s.kind,s.intent,s.scope)
+    elif s.command=='pause': out=mission_action('pause',s.mission_id,s.scope,s.store_root)
+    elif s.command=='stop': out=mission_action('cancel',s.mission_id,s.scope,s.store_root)
+    elif s.command=='resume': out=mission_action('resume',s.mission_id,s.scope,s.store_root)
+    elif s.command=='cancel': out=mission_action('cancel',s.mission_id,s.scope,s.store_root)
+    elif s.command=='replay': out=mission_replay(s.mission_id,s.scope,s.store_root)
+    elif s.command=='evidence': out=mission_evidence(s.mission_id,s.scope,s.store_root)
+    elif s.command=='verify': out=mission_verify(s.mission_id,s.scope,s.store_root)
+    elif s.command=='reality': out=mission_reality(s.mission_id,s.scope,s.store_root)
+    elif s.command=='memory': out=memory(s.scope,s.store_root)
+    elif s.command=='loops': out=loops(s.scope,s.store_root)
+    elif s.command=='context': out=current_context(s.scope,s.store_root)
+    elif s.command=='audit': out={'runtime_audit':audit(s.scope,s.store_root),'cognitive_audit':self_audit(s.scope)}
+    elif s.command=='recover': out=recover(s.scope,s.store_root)
+    elif s.command=='self-test': out=self_test(s.scope)
+    elif s.command=='doctor': out=doctor(s.scope,s.store_root)
+    print(json.dumps(out,indent=2,default=str))
+if __name__=='__main__': main()

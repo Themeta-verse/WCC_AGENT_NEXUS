@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Runtime and local state
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.db
+*.log
+.coverage
+htmlcov/
+.nexus_product/
+.nexus_product_live/
+artifacts/
+*.pid
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+
+# Secret-bearing files are intentionally excluded, but deployment secret managers remain required.
+.env
+.env.*
+!.env.example.disabled
+
+# Portable command-center build products and local configuration
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.project-config.json
